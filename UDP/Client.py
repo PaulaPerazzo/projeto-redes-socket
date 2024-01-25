@@ -10,6 +10,7 @@ client_port = random.randint(8000, 9000)
 client_socket = socket(AF_INET, SOCK_DGRAM)
 address = (server_name, server_port)
 client_socket.connect(address)
+print(client_socket)
 
 
 def receive():
@@ -30,13 +31,13 @@ while True:
     message = input("Digite: ")
 
     if message == "bye":
-        client_socket.sendto(message.encode(), (server_name, server_port))
+        client_socket.sendto(message.encode(), (address))
         client_socket.close()
         name = ""
-        exit()
+        break
     elif message.startswith("hi, meu nome eh ") and not name:
         name = message[len("hi, meu nome eh "):]
-        client_socket.sendto(message.encode(), (server_name, server_port))
+        client_socket.sendto(message.encode(), (address))
     elif name != "":
-        client_socket.sendto(message.encode(), (server_name, server_port))
+        client_socket.sendto(message.encode(), (address))
 

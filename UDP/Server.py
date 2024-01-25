@@ -1,7 +1,6 @@
 from socket import *
 from threading import *
 from queue import *
-import os
 from datetime import datetime
 
 
@@ -22,6 +21,8 @@ def receive():
         try:
             message, addr = server_socket.recvfrom(1024)
             messages.put((message, addr))
+            #server_socket.sendto(f"mensagem recebida".encode(), addr)
+            print(messages)
         except:
             pass
 
@@ -65,15 +66,15 @@ def broadcast():
 
             if addr not in [client[0] for client in clients]:
                 process_message(message, addr)
-            
-            for client in clients:
-                client_addr, client_name = client
-                if message.decode() != "bye":
-                    handle_file(message, client_addr, client_name)
-                else:
-                    clients.remove(client)
-                    print(f"{client_name} saiu da sala")
-                    server_socket.sendto("Você saiu da sala".encode(), client_addr)
+            else:
+                for client in clients:
+                    client_addr, client_name = client
+                    if message.decode() != "bye":
+                        handle_file(message, client_addr, client_name)
+                    else:
+                        clients.remove(client)
+                        print(f"{client_name} saiu da sala")
+                        server_socket.sendto("Você saiu da sala".encode(), client_addr)
 
 #print(f' esses sao os clientes: {clients}')
 first_thread = Thread(target=receive)
