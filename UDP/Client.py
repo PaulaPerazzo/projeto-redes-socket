@@ -6,8 +6,10 @@ host_name = gethostname()
 server_name = gethostbyname(host_name)
 server_port = 9999
 
+client_port = random.randint(8000, 9000)
 client_socket = socket(AF_INET, SOCK_DGRAM)
-#client_socket.bind((server_name, random.randint(8000, 9000)))
+address = (server_name, server_port)
+client_socket.connect(address)
 
 
 def receive():
@@ -28,7 +30,7 @@ while True:
     message = input("Digite: ")
 
     if message == "bye":
-        client_socket.sendto(message.encode(), (server_name, server_port)) #o name fica guardado?
+        client_socket.sendto(message.encode(), (server_name, server_port))
         client_socket.close()
         name = ""
         exit()
@@ -37,5 +39,4 @@ while True:
         client_socket.sendto(message.encode(), (server_name, server_port))
     elif name != "":
         client_socket.sendto(message.encode(), (server_name, server_port))
-        print('pode enviar arquivo txt')
 
