@@ -7,14 +7,13 @@ server_name = gethostbyname(host_name)
 server_port = 9999
 
 client_socket = socket(AF_INET, SOCK_DGRAM)
-client_socket.bind((server_name, random.randint(8000, 9000)))
+#client_socket.bind((server_name, random.randint(8000, 9000)))
 
-name = input("NICKNAME: ")
 
 def receive():
     while True:
         try:
-            message, _ = client_socket.recvfrom(2048)
+            message, _ = client_socket.recvfrom(1024)
             print(message.decode())
         except:
             pass
@@ -23,14 +22,20 @@ def receive():
 thread = Thread(target=receive)
 thread.start()
 
-client_socket.sendto(f"bem vindo: {name}".encode(), (server_name, server_port))
+name = ""
 
 while True:
-    message = input("digite: ")
+    message = input("Digite: ")
 
-    if message == "!q":
-        client_socket.sendto(f"{name}: saiu da sala".encode(), (server_name, server_port))
+    if message == "bye":
+        client_socket.sendto(message.encode(), (server_name, server_port)) #o name fica guardado?
         client_socket.close()
+        name = ""
         exit()
-    else:
-        client_socket.sendto(f"{name}: {message}".encode(), (server_name, server_port))
+    elif message.startswith("hi, meu nome eh ") and not name:
+        name = message[len("hi, meu nome eh "):]
+        client_socket.sendto(message.encode(), (server_name, server_port))
+    elif name != "":
+        client_socket.sendto(message.encode(), (server_name, server_port))
+        print('pode enviar arquivo txt')
+
