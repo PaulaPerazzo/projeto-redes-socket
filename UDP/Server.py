@@ -39,19 +39,20 @@ def process_message(message, addr):
         pass
 
 # função para reconstruir a mensagem enviada pelo cliente        
-def handle_file(file_content, addr, name):
+def handle_file(message, messages, addr, name):
     if addr not in file_packets:
         file_packets[addr] = []
 
+    file_packets[addr].append(message)
 
-    file_packets[addr].append(file_content)
+    file_packets[addr].append(messages)
     # Concatenar os pacotes para reconstruir o arquivo completo
-    message = file_packets[addr]    # message = b''.join(file_packets[addr]) #trocar b por file {addr}
+    messagem_inteira = file_packets[addr]    # message = b''.join(file_packets[addr]) #trocar b por file {addr}
     # Limpar os pacotes após reconstruir o arquivo
     del file_packets[addr] #testar se esta deletando o endereço ou as mensagens
     #deletar in messages 
     
-    print_message(message, addr, name)
+    print_message(messagem_inteira, addr, name)
 
 
 # printar no formato adequado
@@ -73,7 +74,7 @@ def broadcast():
                 for client in clients: #rod -1, bia -2
                     client_addr, client_name = client
                     if message.decode() != "bye":
-                        handle_file(messages, addr, client_name) # message(s)
+                        handle_file(message, messages, addr, client_name) # message(s)
                     else:
                         clients.remove(client)
                         print(f"{client_name} saiu da sala")

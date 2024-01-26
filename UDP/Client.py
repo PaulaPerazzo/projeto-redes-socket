@@ -1,6 +1,8 @@
 from socket import *
 from threading import *
 import random
+from pathlib import Path
+
 
 host_name = gethostname()
 server_name = gethostbyname(host_name)
@@ -45,8 +47,10 @@ while True:
 
     # nome ja definido, mensagem não é de saída, o que aocntece? mensagem enviada aos clientes conectados (servidor)
     elif name != "":
-        message 
-        client_socket.sendto(message.encode(), (address))
+        path_to_message = Path(message)
+        with open(path_to_message, 'r') as arquivo:
+            conteudo = arquivo.read()   
+        client_socket.sendto(conteudo.encode(), (address))
 
     # caso não conectado ainda
     else:
