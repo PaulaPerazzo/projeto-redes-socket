@@ -50,6 +50,8 @@ while True:
         path_to_message = Path(message)
         with open(path_to_message, 'r') as arquivo:
             conteudo = arquivo.read()   
+
+        conteudo += "\x00"  # Adiciona identificador de fim de mensagem
         client_socket.sendto(conteudo.encode(), (address))
 
     # caso não conectado ainda
