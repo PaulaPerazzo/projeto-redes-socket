@@ -34,16 +34,6 @@ def receive():
 thread = Thread(target=receive)
 thread.start()
 
-def get_file_packet_count(filename, buffer_size):
-    byte_size = os.stat(filename).st_size
-    
-    packet_count = byte_size//buffer_size
-
-    if byte_size%buffer_size:
-        packet_count += 1
-
-    return packet_count
-
 
 while True:
     message = input("Digite: ")
@@ -64,14 +54,17 @@ while True:
 
     elif name != "":
         path_to_message = Path(message)
-       # packet_count = get_file_packet_count(path_to_message, 1024)
-        with open(path_to_message, "rb") as file:
-            data = file.read(1024)
-            while data:
-                client_socket.sendto(data, address)
-                print(f'enviado: {data}')
+        # Verifica se o arquivo tem a extensão .txt
+        if path_to_message.suffix.lower() != '.txt':
+            print("Erro: Por favor, envie um arquivo no formato .txt")
+        else:
+            with open(path_to_message, "rb") as file:
                 data = file.read(1024)
-        client_socket.sendto("\\x00".encode(), address)
+                while data:
+                    client_socket.sendto(data, address)
+                    #print(f'enviado: {data}')
+                    data = file.read(1024)
+            client_socket.sendto("\\x00".encode(), address)         # Enviando um marcador de fim de arquivo
 
     else:
         print("Para se conectar ao servidor, digite hi, meu nome eh (seu nome)")

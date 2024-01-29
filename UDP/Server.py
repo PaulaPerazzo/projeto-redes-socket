@@ -30,13 +30,11 @@ def process_message(decoded_message, addr):
         if decoded_message.startswith("hi, meu nome eh "):
             name = decoded_message[len("hi, meu nome eh "):]
             clients.append((addr, name))
-            #print(f"{name} entrou na sala")
             return name
     return None
 
 
-def handle_file(message, addr, name, client_addr):
-    #print("Entrou no handle_file")
+def handle_file(message, addr, name):
     formatted_message = f"{addr[0]}:{addr[1]}/~{name}: "
     lista_envios = []
     lista_envios.append(formatted_message)
@@ -44,20 +42,16 @@ def handle_file(message, addr, name, client_addr):
         lista_envios.append(message)
         message, _ = messages.get()
         message = message.decode("utf-8")
-      #  print(message.decode("utf-8"))
 
     current_time = datetime.now().strftime(" %H:%M:%S %d/%m/%Y")
     lista_envios.append(current_time)
-    #lista_envios.append("\x00")
 
-#fazer um try disso, se nao funcionar, dizer que é para mandar um arquivo de texto
     return lista_envios
 
 
 
 def broadcast():
     while True:
-        #print("Entrou no broadcasting")
         message, addr = messages.get()
         decoded_message = message.decode()
         envio = []
@@ -72,7 +66,7 @@ def broadcast():
             print(f'o nome de quem enviou é {nome}')
             print(f'o dicionario esta assim: {dicionario_clientes}')
             if decoded_message != "bye":
-                envio = handle_file(decoded_message, addr, nome, client_addr)
+                envio = handle_file(decoded_message, addr, nome)
             else:
                 envio.append(f"{nome} saiu da sala")
                 server_socket.sendto("Você saiu da sala".encode(), addr)
@@ -83,7 +77,6 @@ def broadcast():
         print(f'Esses são os clientes: {clients}')
         for client in clients:
             client_addr, _ = client
-            #print(envio)
             for pacote in envio:
                 server_socket.sendto(pacote.encode(), client_addr)
             server_socket.sendto("\\x00".encode(), client_addr)
