@@ -6,6 +6,7 @@ from datetime import datetime
 messages = Queue()
 clients = []
 
+
 server_port = 9999
 host_name = gethostname()
 server_address = gethostbyname(host_name)
@@ -19,54 +20,75 @@ def receive():
         try:
             message, addr = server_socket.recvfrom(1024)
             messages.put((message, addr))
-            print(f"Mensagem recebida de {addr}")
+            #print(f"Mensagem recebida de {addr}")
         except Exception as e:
             print(f"Erro ao receber mensagem: {e}")
 
+        
 def process_message(decoded_message, addr):
-    print("Entrou no process")
     if addr not in [client[0] for client in clients]:
         if decoded_message.startswith("hi, meu nome eh "):
             name = decoded_message[len("hi, meu nome eh "):]
             clients.append((addr, name))
-            print(f"{name} entrou na sala")
-            server_socket.sendto(f"Você entrou na sala com o nome {name}".encode(), addr)
-    else:
-        print(f"Cliente já conectado: {decoded_message}")
+            #print(f"{name} entrou na sala")
+            return name
+    return None
 
-def handle_file(message, addr, name):
-    print("Entrou no handle_file")
-    mensagem_completa = message.decode()
-    while "\x00" not in mensagem_completa:
+
+def handle_file(message, addr, name, client_addr):
+    #print("Entrou no handle_file")
+    formatted_message = f"{addr[0]}:{addr[1]}/~{name}: "
+    lista_envios = []
+    lista_envios.append(formatted_message)
+    while  message != "\\x00":
+        lista_envios.append(message)
         message, _ = messages.get()
-        mensagem_completa += message.decode()
-    print_message(mensagem_completa[:-3], addr, name)
+        message = message.decode("utf-8")
+      #  print(message.decode("utf-8"))
 
-def print_message(decoded_message, addr, name):
-    print("Entrou no print_message")
-    current_time = datetime.now().strftime("%H:%M:%S/%d/%m/%Y")
-    formatted_message = f"{addr[0]}:{addr[1]}/~{name}: {decoded_message} {current_time}"
-    print(formatted_message)
-    server_socket.sendto(formatted_message.encode(), addr)
+    current_time = datetime.now().strftime(" %H:%M:%S %d/%m/%Y")
+    lista_envios.append(current_time)
+    #lista_envios.append("\x00")
+
+#fazer um try disso, se nao funcionar, dizer que é para mandar um arquivo de texto
+    return lista_envios
+
+
 
 def broadcast():
     while True:
-        print("Entrou no broadcasting")
+        #print("Entrou no broadcasting")
         message, addr = messages.get()
         decoded_message = message.decode()
+        envio = []
 
-        process_message(decoded_message, addr)
-        
-        for client in clients:
-            client_addr, client_name = client
+        new_client = process_message(decoded_message, addr)
+
+        if new_client:
+            envio.append(f"{new_client} entrou na sala")
+        else:
+            dicionario_clientes = dict(clients)
+            nome = dicionario_clientes.get(addr)
+            print(f'o nome de quem enviou é {nome}')
+            print(f'o dicionario esta assim: {dicionario_clientes}')
             if decoded_message != "bye":
-                handle_file(message, client_addr, client_name)
+                envio = handle_file(decoded_message, addr, nome, client_addr)
             else:
-                clients.remove(client)
-                print(f"{client_name} saiu da sala")
-                server_socket.sendto("Você saiu da sala".encode(), client_addr)
+                envio.append(f"{nome} saiu da sala")
+                server_socket.sendto("Você saiu da sala".encode(), addr)
+                server_socket.sendto("\\x00".encode(), addr)
+                print((addr, nome))
+                clients.remove((addr, nome))
+                
+        print(f'Esses são os clientes: {clients}')
+        for client in clients:
+            client_addr, _ = client
+            #print(envio)
+            for pacote in envio:
+                server_socket.sendto(pacote.encode(), client_addr)
+            server_socket.sendto("\\x00".encode(), client_addr)
 
-print(f'Esses são os clientes: {clients}')
+
 first_thread = Thread(target=receive)
 second_thread = Thread(target=broadcast)
 

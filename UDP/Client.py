@@ -2,6 +2,8 @@ from socket import *
 from threading import *
 import random
 from pathlib import Path
+import os
+import time
 
 
 host_name = gethostname()
@@ -12,52 +14,65 @@ client_port = random.randint(8000, 9000)
 client_socket = socket(AF_INET, SOCK_DGRAM)
 address = (server_name, server_port)
 client_socket.connect(address)
+name = ""
 
 
 def receive():
+    complete_message = ""
     while True:
         try:
             message, _ = client_socket.recvfrom(1024)
-            print(message.decode())
+            decoded_message = message.decode()
+            if decoded_message != "\\x00":
+                complete_message += decoded_message
+            else:
+                print(complete_message)
+                complete_message = ""
         except:
             pass
-
 
 thread = Thread(target=receive)
 thread.start()
 
-name = ""
+def get_file_packet_count(filename, buffer_size):
+    byte_size = os.stat(filename).st_size
+    
+    packet_count = byte_size//buffer_size
+
+    if byte_size%buffer_size:
+        packet_count += 1
+
+    return packet_count
+
 
 while True:
     message = input("Digite: ")
 
-    # if name not defined yet and message starts with name to be defined, o que acontece?
-    # mensagem mandada define nome do cliente que entrou no servidor e salva esse nome em name
     if message.startswith("hi, meu nome eh ") and not name:
         name = message[len("hi, meu nome eh "):]
-        
-        client_socket.sendto(message.encode(), (address))
+        client_socket.sendto(message.encode(), address)
     
-    # nome ja definido e mensagem bye, o que acontece? saída do cliente
-    elif message == "bye" and name != "": # 
-        client_socket.sendto(message.encode(), (address))
+    elif message == "bye" and name != "":
+        client_socket.sendto(message.encode(), address)
+        # Aguarda um curto período de tempo para dar tempo ao servidor
+        # de processar a mensagem antes de fechar a conexão
+        time.sleep(0.1)
+
         client_socket.close()
         name = ""
         exit()
 
-    # nome ja definido, mensagem não é de saída, o que aocntece? mensagem enviada aos clientes conectados (servidor)
     elif name != "":
         path_to_message = Path(message)
-        with open(path_to_message, 'r') as arquivo:
-            conteudo = arquivo.read()   
+       # packet_count = get_file_packet_count(path_to_message, 1024)
+        with open(path_to_message, "rb") as file:
+            data = file.read(1024)
+            while data:
+                client_socket.sendto(data, address)
+                print(f'enviado: {data}')
+                data = file.read(1024)
+        client_socket.sendto("\\x00".encode(), address)
 
-        conteudo += "\x00"  # Adiciona identificador de fim de mensagem
-        client_socket.sendto(conteudo.encode(), (address))
-
-    # caso não conectado ainda
     else:
-        print("para se conectar ao servidor digite hi, meu nome eh (seu nome)")
-        pass
-
-# no codigo acima as mensagens recebidas como input só são enviadas caso o usuario esteja conectado a sala
-# podemos fazer com que o servidor receba mensagens mesmo de usuarios que não estejam conectados a sala
+        print("Para se conectar ao servidor, digite hi, meu nome eh (seu nome)")
+    time.sleep(0.001)
