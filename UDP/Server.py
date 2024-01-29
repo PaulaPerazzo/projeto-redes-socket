@@ -83,7 +83,6 @@ def broadcast():
             if client_addr == addr:
                 pass
             else:
-                
                 for pacote in envio:
                     server_socket.sendto(pacote.encode(), client_addr)
                 server_socket.sendto("\\x00".encode(), client_addr)
