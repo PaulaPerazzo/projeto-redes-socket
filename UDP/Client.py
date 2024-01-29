@@ -1,36 +1,71 @@
 from socket import *
 from threading import *
 import random
+from pathlib import Path
+import os
+import time
+
 
 host_name = gethostname()
 server_name = gethostbyname(host_name)
 server_port = 9999
 
+client_port = random.randint(8000, 9000)
 client_socket = socket(AF_INET, SOCK_DGRAM)
-client_socket.bind((server_name, random.randint(8000, 9000)))
+address = (server_name, server_port)
+client_socket.connect(address)
+name = ""
 
-name = input("NICKNAME: ")
 
 def receive():
+    complete_message = ""
     while True:
         try:
-            message, _ = client_socket.recvfrom(2048)
-            print(message.decode())
+            message, _ = client_socket.recvfrom(1024)
+            decoded_message = message.decode()
+            if decoded_message != "\\x00":
+                complete_message += decoded_message
+            else:
+                print(complete_message)
+                complete_message = ""
         except:
             pass
-
 
 thread = Thread(target=receive)
 thread.start()
 
-client_socket.sendto(f"bem vindo: {name}".encode(), (server_name, server_port))
 
 while True:
-    message = input("digite: ")
+    message = input("Digite: ")
 
-    if message == "!q":
-        client_socket.sendto(f"{name}: saiu da sala".encode(), (server_name, server_port))
+    if message.startswith("hi, meu nome eh ") and not name:
+        name = message[len("hi, meu nome eh "):]
+        client_socket.sendto(message.encode(), address)
+    
+    elif message == "bye" and name != "":
+        client_socket.sendto(message.encode(), address)
+        # Aguarda um curto período de tempo para dar tempo ao servidor
+        # de processar a mensagem antes de fechar a conexão
+        time.sleep(0.1)
+
         client_socket.close()
+        name = ""
         exit()
+
+    elif name != "":
+        path_to_message = Path(message)
+        # Verifica se o arquivo tem a extensão .txt
+        if path_to_message.suffix.lower() != '.txt':
+            print("Erro: Por favor, envie um arquivo no formato .txt")
+        else:
+            with open(path_to_message, "rb") as file:
+                data = file.read(1024)
+                while data:
+                    client_socket.sendto(data, address)
+                    #print(f'enviado: {data}')
+                    data = file.read(1024)
+            client_socket.sendto("\\x00".encode(), address)         # Enviando um marcador de fim de arquivo
+
     else:
-        client_socket.sendto(f"{name}: {message}".encode(), (server_name, server_port))
+        print("Para se conectar ao servidor, digite hi, meu nome eh (seu nome)")
+    time.sleep(0.001)
