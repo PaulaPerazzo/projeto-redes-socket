@@ -60,6 +60,9 @@ def broadcast():
 
         if new_client:
             envio.append(f"{new_client} entrou na sala")
+            server_socket.sendto("Você entrou da sala".encode(), addr)
+            server_socket.sendto("\\x00".encode(), addr)
+
         else:
             dicionario_clientes = dict(clients)
             nome = dicionario_clientes.get(addr)
@@ -77,9 +80,12 @@ def broadcast():
         print(f'Esses são os clientes: {clients}')
         for client in clients:
             client_addr, _ = client
-            for pacote in envio:
-                server_socket.sendto(pacote.encode(), client_addr)
-            server_socket.sendto("\\x00".encode(), client_addr)
+            if client_addr == addr:
+                pass
+            else:
+                for pacote in envio:
+                    server_socket.sendto(pacote.encode(), client_addr)
+                server_socket.sendto("\\x00".encode(), client_addr)
 
 
 first_thread = Thread(target=receive)
