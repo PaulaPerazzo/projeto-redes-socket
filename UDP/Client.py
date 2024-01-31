@@ -41,14 +41,24 @@ print("BEM VINDO AO CHAT UDP")
 
 print("---------------------")
 
+verification = False
+
 print("Para se conectar ao servidor, digite: hi, meu nome eh (seu nome)")
 
-message = input("\nDigite: ")
+while verification == False:
 
-if message.startswith("hi, meu nome eh ") and not name:
-    name = message[len("hi, meu nome eh "):]
-    client_socket.sendto(message.encode(), address)
+    message = input("\nDigite: ")
 
+    if message.startswith("hi, meu nome eh ") and not name:
+        name = message[len("hi, meu nome eh "):]
+        if name != "":
+            client_socket.sendto(message.encode(), address)
+            verification = True
+        else:
+            print("Nome inválido, digite novamente o comando.")
+            pass
+    else:
+        print("Comando inválido, digite novamente!")
 
 while True:
     time.sleep(1)
@@ -58,11 +68,7 @@ while True:
 
     message = input("\nDigite a mensagem: ")
 
-    if message.startswith("hi, meu nome eh ") and not name:
-        name = message[len("hi, meu nome eh "):]
-        client_socket.sendto(message.encode(), address)
-
-    elif message == "bye" and name != "":
+    if message == "bye" and name != "":
         client_socket.sendto(message.encode(), address)
         # Aguarda um curto período de tempo para dar tempo ao servidor
         # de processar a mensagem antes de fechar a conexão
@@ -87,6 +93,4 @@ while True:
             # Enviando um marcador de fim de arquivo
             client_socket.sendto("\\x00".encode(), address)
 
-    else:
-        print("Para se conectar ao servidor, digite hi, meu nome eh (seu nome)")
     time.sleep(0.001)
