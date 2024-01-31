@@ -31,17 +31,37 @@ def receive():
         except:
             pass
 
+
 thread = Thread(target=receive)
 thread.start()
 
+print("---------------------")
+
+print("BEM VINDO AO CHAT UDP")
+
+print("---------------------")
+
+print("Para se conectar ao servidor, digite: hi, meu nome eh (seu nome)")
+
+message = input("\nDigite: ")
+
+if message.startswith("hi, meu nome eh ") and not name:
+    name = message[len("hi, meu nome eh "):]
+    client_socket.sendto(message.encode(), address)
+
 
 while True:
-    message = input("Digite: ")
+    time.sleep(1)
+
+    print("\n(Para envio de um arquivo txt, \ndigite o caminho do mesmo em sua máquina)")
+    print("\n(Para sair do chat, digite: bye)")
+
+    message = input("\nDigite a mensagem: ")
 
     if message.startswith("hi, meu nome eh ") and not name:
         name = message[len("hi, meu nome eh "):]
         client_socket.sendto(message.encode(), address)
-    
+
     elif message == "bye" and name != "":
         client_socket.sendto(message.encode(), address)
         # Aguarda um curto período de tempo para dar tempo ao servidor
@@ -62,9 +82,10 @@ while True:
                 data = file.read(1024)
                 while data:
                     client_socket.sendto(data, address)
-                    #print(f'enviado: {data}')
+                    # print(f'enviado: {data}')
                     data = file.read(1024)
-            client_socket.sendto("\\x00".encode(), address)         # Enviando um marcador de fim de arquivo
+            # Enviando um marcador de fim de arquivo
+            client_socket.sendto("\\x00".encode(), address)
 
     else:
         print("Para se conectar ao servidor, digite hi, meu nome eh (seu nome)")
