@@ -27,14 +27,17 @@ def receive(): #função pra receber
                 complete_message += decoded_message
             else:
                 print(complete_message)
+                if complete_message != "Você entrou da sala" and complete_message != "Você saiu da sala":
+                    print("Digite: ")
                 complete_message = "" # a mensagem fica vazia depois que printada
+
         except:
             pass
 
 thread = Thread(target=receive)
 thread.start()
 
-# uma ideia é mandar um print explicando como o cliente faz para se conectar antes do loop de digite
+# uma ideia é mandar um print explicando como o cliente faz pahira se conectar antes do loop de digite
 
 while True:
     message = input("Digite: ")
