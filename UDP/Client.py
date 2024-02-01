@@ -115,7 +115,7 @@ while True:
                     client_socket.sendto(data, address)
                     print(f'enviado: {data}')
                     data = file.read(1024)
-            # Enviando um marcador de fim de arquivo
+            # envia um marcador de fim de arquivo
             client_socket.sendto("\\x00".encode(), address)
 
     time.sleep(0.001)

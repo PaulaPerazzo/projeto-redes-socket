@@ -39,7 +39,6 @@ def process_message(decoded_message, addr):
             name = decoded_message[len("hi, meu nome eh "):]
             clients.append((addr, name))
             return name
-    # caso não for para adicionar um novo cliente, retorna None
     return None
 
 
