@@ -113,7 +113,7 @@ while True:
                 # loop enquanto houver dados no arquivo para repetir a última operação
                 while data:
                     client_socket.sendto(data, address)
-                    print(f'enviado: {data}')
+                    # print(f'enviado: {data}')
                     data = file.read(1024)
             # envia um marcador de fim de arquivo
             client_socket.sendto("\\x00".encode(), address)
