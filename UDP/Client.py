@@ -27,7 +27,9 @@ def receive():
                 complete_message += decoded_message
             else:
                 print(complete_message)
-                complete_message = ""
+                if complete_message != "Você entrou da sala" and complete_message != "Você saiu da sala":
+                    print("Digite sua mensagem: ") #Após receber uma mensagem, aparece uma mensagem de digite, caso não tenha sido uma mensagem advinda de um comando do cliente
+                complete_message = "" # a mensagem fica vazia depois que printada
         except:
             pass
 
@@ -61,12 +63,12 @@ while verification == False:
         print("Comando inválido, digite novamente!")
 
 while True:
-    time.sleep(1)
+    time.sleep(0.1)
 
     print("\n(Para envio de um arquivo txt, \ndigite o caminho do mesmo em sua máquina)")
     print("\n(Para sair do chat, digite: bye)")
 
-    message = input("\nDigite a mensagem: ")
+    message = input("\nDigite sua mensagem: ")
 
     if message == "bye" and name != "":
         client_socket.sendto(message.encode(), address)
