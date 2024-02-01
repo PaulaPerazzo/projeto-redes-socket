@@ -1,6 +1,7 @@
 from socket import *
 from threading import *
 from queue import *
+from datetime import datetime
 
 # cria uma fila para armazenar as mensagens recebidas
 messages = Queue()
@@ -16,43 +17,74 @@ server_address = gethostbyname(host_name)
 server_socket = socket(AF_INET, SOCK_DGRAM)
 server_socket.bind((server_address, server_port))
 # imprime uma mensagem indicando que o servidor está pronto
-print("server is ready to receive")
+print("Servidor conectado!")
 
 # função para receber mensagens dos clientes
 def receive():
     while True:
         try:
             # recebe uma mensagem e o endereço do remetente e coloca a mensagem com endereço na fila
-            message, addr = server_socket.recvfrom(2048)
+            message, addr = server_socket.recvfrom(1024)
             messages.put((message, addr))
-        except:
-            pass
+            # print(f"Mensagem recebida de {addr}")
+        except Exception as e:
+            print(f"Erro ao receber mensagem: {e}")
+
+
+def process_message(decoded_message, addr):
+    if addr not in [client[0] for client in clients]:
+        if decoded_message.startswith("hi, meu nome eh "):
+            name = decoded_message[len("hi, meu nome eh "):]
+            clients.append((addr, name))
+            return name
+    return None
+
+
+def handle_file(message, addr, name):
+    formatted_message = f"{addr[0]}:{addr[1]}/~{name}: "
+    lista_envios = []
+    lista_envios.append(formatted_message)
+    while message != "\\x00":
+        lista_envios.append(message)
+        message, _ = messages.get()
+        message = message.decode("utf-8")
+
+    current_time = datetime.now().strftime(" %H:%M:%S %d/%m/%Y")
+    lista_envios.append(current_time)
+
+    return lista_envios
 
 # função para transmitir mensagens para todos os clientes conectados
 def broadcast():
     while True:
-        # verifica se há mensagens na fila
-        while not messages.empty():
-            # obtém a mensagem e o endereço do remetente, decodifica a mensagem e a exibe no servidor
-            message, addr = messages.get()
-            print(message.decode())
+        message, addr = messages.get()
+        decoded_message = message.decode()
+        envio = []
 
-           
-            if addr not in clients:
-                clients.append(addr)
-            
-            
-            for client in clients:
-                try:
-                    if message.decode().startswith("NICKNAME:"):
-                        name = message.decode()[message.decode().index(":") + 1 :]
-                        print(f"{name} entrou!")
-                        server_socket.sendto(f"{name} entrou!".encode(), client)
-                    else:
-                        server_socket.sendto(message, client)
-                
-                except:
-                    clients.remove(client)
+        new_client = process_message(decoded_message, addr)
+
+        if new_client:
+            envio.append(f"{new_client} entrou na sala")
+        else:
+            dicionario_clientes = dict(clients)
+            nome = dicionario_clientes.get(addr)
+            print(f'o nome de quem enviou é {nome}')
+            print(f'o dicionario esta assim: {dicionario_clientes}')
+            if decoded_message != "bye":
+                envio = handle_file(decoded_message, addr, nome)
+            else:
+                envio.append(f"{nome} saiu da sala")
+                server_socket.sendto("Você saiu da sala".encode(), addr)
+                server_socket.sendto("\\x00".encode(), addr)
+                print((addr, nome))
+                clients.remove((addr, nome))
+
+        print(f'Esses são os clientes: {clients}')
+        for client in clients:
+            client_addr, _ = client
+            for pacote in envio:
+                server_socket.sendto(pacote.encode(), client_addr)
+            server_socket.sendto("\\x00".encode(), client_addr)
 
 # cria duas threads para as funções receive e broadcast e as inicia
 first_thread = Thread(target=receive)

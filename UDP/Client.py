@@ -1,28 +1,35 @@
 from socket import *
 from threading import *
 import random
+from pathlib import Path
+import os
+import time
+
 
 # obtem o nome do host local e seu endereço IP e define a porta do servidor 
 host_name = gethostname()
 server_name = gethostbyname(host_name)
 server_port = 9999
 
-# cria um socket UDP
+client_port = random.randint(8000, 9000)
 client_socket = socket(AF_INET, SOCK_DGRAM)
-# atribui um endereço IP e porta local aleatória para o socket do cliente
-client_socket.bind((server_name, random.randint(8000, 9000)))
+address = (server_name, server_port)
+client_socket.connect(address)
+name = ""
 
-# solicita ao usuário um apelido (nickname)
-name = input("NICKNAME: ")
 
 # função que recebe as mensagens do servidor 
 def receive():
+    complete_message = ""
     while True:
         try:
-            # recebe uma mensagem de no máximo 2048 bytes
-            message, _ = client_socket.recvfrom(2048)
-            # exibe a mensagem decodificada
-            print(message.decode())
+            message, _ = client_socket.recvfrom(1024)
+            decoded_message = message.decode()
+            if decoded_message != "\\x00":
+                complete_message += decoded_message
+            else:
+                print(complete_message)
+                complete_message = ""
         except:
             pass
 
@@ -30,19 +37,63 @@ def receive():
 thread = Thread(target=receive)
 thread.start()
 
-# envia uma mensgame de boas-vindas ao servidor com o apelido fornecido pelo cliente
-client_socket.sendto(f"bem vindo: {name}".encode(), (server_name, server_port))
+print("---------------------")
+
+print("BEM VINDO AO CHAT UDP")
+
+print("---------------------")
+
+verification = False
+
+print("Para se conectar ao servidor, digite: hi, meu nome eh (seu nome)")
+
+while verification == False:
+
+    message = input("\nDigite: ")
+
+    if message.startswith("hi, meu nome eh ") and not name:
+        name = message[len("hi, meu nome eh "):]
+        if name != "":
+            client_socket.sendto(message.encode(), address)
+            verification = True
+        else:
+            print("Nome inválido, digite novamente o comando.")
+            pass
+    else:
+        print("Comando inválido, digite novamente!")
 
 # loop para enviar mensagens para o servidor
 while True:
-    # solicitação de mensagem ao cliente/usuário
-    message = input("digite: ")
+    time.sleep(1)
 
-    # verificação para, caso o usuário digitar !q, informar que ele saiu, fechar o socket e encerrar o programa
-    if message == "!q":
-        client_socket.sendto(f"{name}: saiu da sala".encode(), (server_name, server_port))
+    print("\n(Para envio de um arquivo txt, \ndigite o caminho do mesmo em sua máquina)")
+    print("\n(Para sair do chat, digite: bye)")
+
+    message = input("\nDigite a mensagem: ")
+
+    if message == "bye" and name != "":
+        client_socket.sendto(message.encode(), address)
+        # Aguarda um curto período de tempo para dar tempo ao servidor
+        # de processar a mensagem antes de fechar a conexão
+        time.sleep(0.1)
+
         client_socket.close()
+        name = ""
         exit()
-    else:
-        # envia a mensagem ao servidor no formato "apelido: mensagem"
-        client_socket.sendto(f"{name}: {message}".encode(), (server_name, server_port))
+
+    elif name != "":
+        path_to_message = Path(message)
+        # Verifica se o arquivo tem a extensão .txt
+        if path_to_message.suffix.lower() != '.txt':
+            print("Erro: Por favor, envie um arquivo no formato .txt")
+        else:
+            with open(path_to_message, "rb") as file:
+                data = file.read(1024)
+                while data:
+                    client_socket.sendto(data, address)
+                    # print(f'enviado: {data}')
+                    data = file.read(1024)
+            # Enviando um marcador de fim de arquivo
+            client_socket.sendto("\\x00".encode(), address)
+
+    time.sleep(0.001)
