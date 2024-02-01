@@ -30,37 +30,47 @@ def receive():
         except Exception as e:
             print(f"Erro ao receber mensagem: {e}")
 
-
+# função para processar as mensagens 
 def process_message(decoded_message, addr):
+    # verifica se o endereço do cliente está entre os clientes conectados
     if addr not in [client[0] for client in clients]:
+        # verifica se a mensagem é para adicioanr um novo cliente e se sim, retorna o nome
         if decoded_message.startswith("hi, meu nome eh "):
             name = decoded_message[len("hi, meu nome eh "):]
             clients.append((addr, name))
             return name
+    # caso não for para adicionar um novo cliente, retorna None
     return None
 
 
+# função para manipular os arquivos
 def handle_file(message, addr, name):
+    # formata o cabeçalho e adiciona-o à lista de envio
     formatted_message = f"{addr[0]}:{addr[1]}/~{name}: "
     lista_envios = []
     lista_envios.append(formatted_message)
     while message != "\\x00":
+        # adiciona as partes da mensagem à lista de envio, recebe a próxima parte e a decodifica
         lista_envios.append(message)
         message, _ = messages.get()
         message = message.decode("utf-8")
 
+    # adiciona a hora atual à lista de envio
     current_time = datetime.now().strftime(" %H:%M:%S %d/%m/%Y")
     lista_envios.append(current_time)
-
+    # retorna a lista de envios
     return lista_envios
 
 # função para transmitir mensagens para todos os clientes conectados
 def broadcast():
     while True:
+        # recebe uma mensagem e endereço de remetente 
         message, addr = messages.get()
+        # decodifica a mensagem 
         decoded_message = message.decode()
+        # cria uma lista para armazenar as mensagens a serem enviadas
         envio = []
-
+        # verifica se é um novo cliente
         new_client = process_message(decoded_message, addr)
 
         if new_client:
@@ -70,9 +80,11 @@ def broadcast():
             nome = dicionario_clientes.get(addr)
             print(f'o nome de quem enviou é {nome}')
             print(f'o dicionario esta assim: {dicionario_clientes}')
+            # verifica se a mensagem (não) é para sair do chat
             if decoded_message != "bye":
                 envio = handle_file(decoded_message, addr, nome)
             else:
+                # se sim, adiciona mensagens de saída, envia um marcador de fim e remove o cliente da lista de clientes conectados
                 envio.append(f"{nome} saiu da sala")
                 server_socket.sendto("Você saiu da sala".encode(), addr)
                 server_socket.sendto("\\x00".encode(), addr)
@@ -80,14 +92,16 @@ def broadcast():
                 clients.remove((addr, nome))
 
         print(f'Esses são os clientes: {clients}')
+        # para cada cliente conectado, obtém o endereço do cliente
         for client in clients:
             client_addr, _ = client
+            # para cada pacote na lista de envio, envia o pacote ao cliente 
             for pacote in envio:
                 server_socket.sendto(pacote.encode(), client_addr)
+            # envia um marcador de fim de mensagem
             server_socket.sendto("\\x00".encode(), client_addr)
 
 # cria duas threads para as funções receive e broadcast e as inicia
-first_thread = Thread(target=receive)
 first_thread = Thread(target=receive)
 second_thread = Thread(target=broadcast)
 
