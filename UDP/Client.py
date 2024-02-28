@@ -1,9 +1,13 @@
 from socket import *
 from threading import *
+import threading
 import random
 from pathlib import Path
 import os
 import time
+from Checksum import ip_checksum
+
+
 
 # obtem o nome do host local e seu endereço IP e define a porta do servidor
 host_name = gethostname()
@@ -17,11 +21,17 @@ client_socket = socket(AF_INET, SOCK_DGRAM)
 address = (server_name, server_port)
 client_socket.connect(address)
 name = ""
+# Criando um objeto de evento
+ack_recebido = threading.Event()
+#ack_recebido.set()
 
 # função que recebe as mensagens do servidor
 
+n_sequencia = None
 
 def receive():
+    global n_sequencia
+
     # variável para armazenar a mensagem completa
     complete_message = ""
     while True:
@@ -31,8 +41,15 @@ def receive():
             decoded_message = message.decode()
             # verifica se a mensagem é um marcador de fim
             if decoded_message != "\\x00":
-                # adiciona a mensagem decodificada à mensagem completa
-                complete_message += decoded_message
+                if decoded_message == "ACK 0" or decoded_message == "ACK 1":
+                    n_sequencia = int(decoded_message[-1:])
+                    ack_recebido.set()
+                   # n_sequencia = int(decoded_message[-1:])
+                    #checksum = message.decode()[:2]
+                   # print(n_sequencia)
+                else:        
+                    # adiciona a mensagem decodificada à mensagem completa
+                    complete_message += decoded_message
             else:
                 # imprime a mensagem completa e reinicia a variável para a próxima mensagem
                 print(complete_message)
@@ -42,6 +59,41 @@ def receive():
                 complete_message = ""  # a mensagem fica vazia depois que printada
         except:
             pass
+
+def envio_com_rdt(seq, mensagem, address):
+    global n_sequencia
+
+    ack = False
+    #print(f'esperado: {seq} e chegado: {n_sequencia}' )
+    while ack == False:
+        #client_socket.sendto((check + n_seq + message.encode()), address)
+        check = ip_checksum(mensagem).encode()
+        n_seq = str(seq).encode()
+        pacote = (check + n_seq + mensagem.encode())
+        client_socket.sendto(pacote, address)
+        #print(f'esperado: {seq} e chegado: {n_sequencia}' )
+
+        if ack_recebido.wait(3): #acho que n basta usar o timer, pq ele pega o tempo do proximo?
+            #n_sequencia = n_sequencia 
+            time.sleep(0.1) #porque? nao precisa, porem faz com que a linha debaixo da igual
+            print(f'{n_sequencia} é o numero de sequencia recebido, {seq} é o esperado')
+            # print(type(n_sequencia), "TYPE DE N_SEQUENCIA")
+            # print(type(seq), "TYPE SEQ")
+            # print(seq == n_sequencia)
+            if n_sequencia == seq:
+                ack = True
+                print('mensagem recebida')
+            else:
+                print('Arquivo perdido, reenviando pacote...')
+        else:
+            print('TIMEOUT Error, reenviando pacote...')
+            pass
+            
+
+
+
+
+seq = 0
 
 
 # cria uma thread para a função de receber e a inicia
@@ -68,7 +120,12 @@ while verification == False:
         name = message[len("hi, meu nome eh "):]
         if name != "":
             # envia a mensagem para o servidor e altera a variável de verificaçãoq que indica conexão bem sucedida
-            client_socket.sendto(message.encode(), address)
+
+            #client_socket.sendto((check + n_seq + message.encode()), address)
+            envio_com_rdt(seq, message, address)
+            seq = 1 - seq
+
+            #client_socket.sendto(message.encode(), address)
             verification = True
         else:
             # mensagem de erro para nome inválido
@@ -92,7 +149,10 @@ while True:
     # verifica se a mensagem é para sair do chat
     if message == "bye" and name != "":
         # envia mensagem ao servidor
-        client_socket.sendto(message.encode(), address)
+        #client_socket.sendto(message.encode(), address)
+        envio_com_rdt(seq, message, address)
+        seq = 1 - seq
+
         # Aguarda um curto período de tempo para dar tempo ao servidor
         # de processar a mensagem antes de fechar a conexão
         time.sleep(0.1)
@@ -115,9 +175,15 @@ while True:
                 data = file.read(1024)
                 # loop enquanto houver dados no arquivo para repetir a última operação
                 while data:
-                    client_socket.sendto(data, address)
+                  
+                    envio_com_rdt(seq, data.decode(), address)
+                    seq = 1 - seq
+
+                    #client_socket.sendto(data, address)
                     data = file.read(1024)
             # Enviando um marcador de fim de arquivo
-            client_socket.sendto("\\x00".encode(), address)
+            envio_com_rdt(seq,"\\x00", address)
+            seq = 1 - seq
+            #client_socket.sendto("\\x00".encode(), address)
 
     time.sleep(0.001)
