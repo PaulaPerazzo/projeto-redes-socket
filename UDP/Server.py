@@ -28,7 +28,17 @@ def receive():
         try:
             # recebe uma mensagem e o endereço do remetente e coloca a mensagem com endereço na fila
             message, addr = server_socket.recvfrom(1024)
-            messages.put((message, addr))
+           # messages.put((message, addr))
+        #j message2 = message.decode("utf-8")
+           # print(message2)
+            checksum = message.decode()[:2]
+            seq = message.decode()[2]
+            pkt = message.decode()[3:]
+            messages.put((pkt, addr))
+            server_socket.sendto(("ACK " + str(seq)).encode(), addr)
+            #print(checksum)
+            print(seq)
+            #print(pkt)
 
         except Exception as e:
             print(f"Erro ao receber mensagem: {e}")
@@ -58,7 +68,7 @@ def handle_file(message, addr, name):
         # adiciona as partes da mensagem à lista de envio, recebe a próxima parte e a decodifica
         lista_envios.append(message)
         message, _ = messages.get()
-        message = message.decode("utf-8")
+        #message = message.decode("utf-8")
 
     # adiciona a hora atual à lista de envio
     current_time = datetime.now().strftime(" %H:%M:%S %d/%m/%Y")
@@ -73,11 +83,11 @@ def broadcast():
         # recebe uma mensagem e endereço de remetente
         message, addr = messages.get()
         # decodifica a mensagem
-        decoded_message = message.decode()
+       # decoded_message = message.decode()
         # cria uma lista para armazenar as mensagens a serem enviadas
         envio = []
         # verifica se é um novo cliente
-        new_client = process_message(decoded_message, addr)
+        new_client = process_message(message, addr)
 
         if new_client:
             # em caso de novo cliente envia a mensagem para os demais avisando que um novo cliente entrou
@@ -92,8 +102,11 @@ def broadcast():
             print(f'o nome de quem enviou é {nome}')
             print(f'o dicionario esta assim: {dicionario_clientes}')
             # verifica se a mensagem (não) é para sair do chat
-            if decoded_message != "bye":
-                envio = handle_file(decoded_message, addr, nome)
+           # if decoded_message != "bye":
+            if message != "bye":
+                envio = handle_file(message, addr, nome)
+
+            #    envio = handle_file(decoded_message, addr, nome)
             else:
                 # se sim, adiciona mensagens de saída,
                 # envia um marcador de fim e remove o cliente da lista de clientes conectados
