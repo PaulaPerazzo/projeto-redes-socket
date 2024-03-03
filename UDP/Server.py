@@ -1,7 +1,10 @@
 from socket import *
 from threading import *
+import threading
 from queue import *
 from datetime import datetime
+from Checksum import ip_checksum
+import time
 
 # cria uma fila para armazenar as mensagens recebidas
 messages = Queue()
@@ -21,9 +24,11 @@ server_socket.bind((server_address, server_port))
 print("Servidor conectado!")
 
 # função para receber mensagens dos clientes
-
+ack_recebido = threading.Event()
+n_sequencia = None
 
 def receive():
+    global n_sequencia
     while True:
         try:
             # recebe uma mensagem e o endereço do remetente e coloca a mensagem com endereço na fila
@@ -31,11 +36,20 @@ def receive():
            # messages.put((message, addr))
         #j message2 = message.decode("utf-8")
            # print(message2)
-            checksum = message.decode()[:2]
-            seq = message.decode()[2]
-            pkt = message.decode()[3:]
-            messages.put((pkt, addr))
-            server_socket.sendto(("ACK " + str(seq)).encode(), addr)
+            decoded_message = message.decode()
+            if decoded_message == "ACK 0" or decoded_message == "ACK 1":
+                n_sequencia = int(decoded_message[-1:])
+                ack_recebido.set()
+            else:
+                checksum = decoded_message[:2]
+                seq = decoded_message[2]
+                pkt = decoded_message[3:]
+                if checksum == ip_checksum(pkt):
+                    messages.put((pkt, addr))
+                    server_socket.sendto(("ACK " + str(seq)).encode(), addr)
+                else:
+                    server_socket.sendto(("ACK " + str(1 - int(seq))).encode(), addr)
+                    print("Erro: checksum inválido")
             #print(checksum)
             print(seq)
             #print(pkt)
@@ -93,8 +107,8 @@ def broadcast():
             # em caso de novo cliente envia a mensagem para os demais avisando que um novo cliente entrou
             # e retorna para o usuário também informando que a entrada foi bem sucedida.
             envio.append(f"{new_client} entrou na sala")
-            server_socket.sendto("Você entrou da sala".encode(), addr)
-            server_socket.sendto("\\x00".encode(), addr)
+            envio_com_rdt(seq, "Você entrou da sala".encode(), addr)
+            envio_com_rdt(seq, "\\x00".encode(), addr)
 
         else:
             dicionario_clientes = dict(clients)
@@ -111,8 +125,8 @@ def broadcast():
                 # se sim, adiciona mensagens de saída,
                 # envia um marcador de fim e remove o cliente da lista de clientes conectados
                 envio.append(f"{nome} saiu da sala")
-                server_socket.sendto("Você saiu da sala".encode(), addr)
-                server_socket.sendto("\\x00".encode(), addr)
+                envio_com_rdt(seq, "Você saiu da sala".encode(), addr)
+                envio_com_rdt(seq, "\\x00".encode(), addr)
                 print((addr, nome))
                 clients.remove((addr, nome))
 
@@ -126,11 +140,42 @@ def broadcast():
             else:
                 # para cada pacote na lista de envio, envia o pacote ao cliente
                 for pacote in envio:
-                    server_socket.sendto(pacote.encode(), client_addr)
+                    envio_com_rdt(seq, pacote.encode(), client_addr)
+                    seq = 1 - seq
                 # envia um marcador de fim de mensagem
-                server_socket.sendto("\\x00".encode(), client_addr)
+                envio_com_rdt(seq, "\\x00".encode(), client_addr)
+                seq = 1 - seq
 
+def envio_com_rdt(seq, mensagem, address):
+    global n_sequencia
 
+    ack = False
+    #print(f'esperado: {seq} e chegado: {n_sequencia}' )
+    while ack == False:
+        #server_socket.sendto((check + n_seq + message.encode()), address)
+        check = ip_checksum(mensagem).encode()
+        n_seq = str(seq).encode()
+        pacote = (check + n_seq + mensagem.encode())
+        server_socket.sendto(pacote, address)
+        #print(f'esperado: {seq} e chegado: {n_sequencia}' )
+
+        if ack_recebido.wait(3): #acho que n basta usar o timer, pq ele pega o tempo do proximo?
+            #n_sequencia = n_sequencia 
+            time.sleep(0.1) #porque? nao precisa, porem faz com que a linha debaixo da igual
+            print(f'{n_sequencia} é o numero de sequencia recebido, {seq} é o esperado')
+            # print(type(n_sequencia), "TYPE DE N_SEQUENCIA")
+            # print(type(seq), "TYPE SEQ")
+            # print(seq == n_sequencia)
+            if n_sequencia == seq:
+                ack = True
+                print('mensagem recebida')
+            else:
+                print('Arquivo perdido, reenviando pacote...')
+        else:
+            print('TIMEOUT Error, reenviando pacote...')
+            pass
+            
+seq = 0
 # cria duas threads para as funções receive e broadcast e as inicia
 first_thread = Thread(target=receive)
 second_thread = Thread(target=broadcast)
