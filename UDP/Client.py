@@ -44,20 +44,21 @@ def receive():
                 ack_recebido.set()
             else:
                 checksum = decoded_message[:2]   
-                seq = decoded_message[2]
+                n_seq = decoded_message[2]
                 pkt = decoded_message[3:]
                 if checksum == ip_checksum(pkt):# adiciona a mensagem decodificada à mensagem completa
                     # verifica se a mensagem é um marcador de fim
-                    if decoded_message != "\\x00":
-                        if decoded_message == "ACK 0" or decoded_message == "ACK 1":
-                            n_sequencia = int(decoded_message[-1:])
-                            ack_recebido.set()
+                    if pkt != "\\x00":
+                        #if decoded_message == "ACK 0" or decoded_message == "ACK 1":
+                         #   n_sequencia = int(decoded_message[-1:])
+                          #  ack_recebido.set()
                             # n_sequencia = int(decoded_message[-1:])
                             #checksum = message.decode()[:2]
                             # print(n_sequencia)
-                        else:     
-                            complete_message += pkt
-                            client_socket.sendto(("ACK " + str(seq)).encode(), address)
+                        #else:     
+                        complete_message += pkt
+                        print(f'Checksum válido, enviando ACK {n_seq}')
+                        client_socket.sendto(("ACK " + str(n_seq)).encode(), address)
                     else:
                         # imprime a mensagem completa e reinicia a variável para a próxima mensagem
                         print(complete_message)
@@ -65,8 +66,11 @@ def receive():
                         # Após receber uma mensagem, aparece uma mensagem de digite, caso não tenha sido uma mensagem advinda de um comando do cliente
                             print("Digite sua mensagem: ")
                         complete_message = ""  # a mensagem fica vazia depois que printada
+                        #print(f'Checksum válido, enviando ACK {n_seq}')
+                        client_socket.sendto(("ACK " + str(n_seq)).encode(), address)
+
                 else:
-                    client_socket.sendto(("ACK " + str(1 - int(seq))).encode(), address)
+                    client_socket.sendto(("ACK " + str(1 - int(n_seq))).encode(), address)
                     print("Erro: checksum inválido")
         except:
             pass
@@ -82,28 +86,18 @@ def envio_com_rdt(seq, mensagem, address):
         n_seq = str(seq).encode()
         pacote = (check + n_seq + mensagem.encode())
         client_socket.sendto(pacote, address)
-        #print(f'esperado: {seq} e chegado: {n_sequencia}' )
-
         if ack_recebido.wait(3): #acho que n basta usar o timer, pq ele pega o tempo do proximo?
-            #n_sequencia = n_sequencia 
             time.sleep(0.1) #porque? nao precisa, porem faz com que a linha debaixo da igual
-            print(f'{n_sequencia} é o numero de sequencia recebido, {seq} é o esperado')
-            # print(type(n_sequencia), "TYPE DE N_SEQUENCIA")
-            # print(type(seq), "TYPE SEQ")
-            # print(seq == n_sequencia)
+            #print(f'{n_sequencia} é o numero de sequencia recebido, {seq} é o esperado')
             if n_sequencia == seq:
                 ack = True
-                print('mensagem recebida')
+                print('Mensagem recebida')
             else:
                 print('Arquivo perdido, reenviando pacote...')
         else:
             print('TIMEOUT Error, reenviando pacote...')
             pass
             
-
-
-
-
 seq = 0
 
 
@@ -131,7 +125,6 @@ while verification == False:
         name = message[len("hi, meu nome eh "):]
         if name != "":
             # envia a mensagem para o servidor e altera a variável de verificaçãoq que indica conexão bem sucedida
-
             #client_socket.sendto((check + n_seq + message.encode()), address)
             envio_com_rdt(seq, message, address)
             seq = 1 - seq
