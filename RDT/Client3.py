@@ -80,16 +80,17 @@ while verification == False:
                 client_socket.sendto((ip_checksum(message) + str(seq) + message).encode(), address)
                 
                 try:
-                    print('send: GETTING ACK')
+                    print('GETTING ACK...')
                     reply, addr = client_socket.recvfrom(1024)
                     reply.decode("utf-8")
-                    ack = reply[3]
-                except timeout:
-                    print('send: TIMEOUT')
-                else:
+                    print(reply)
+                    ack = chr(reply[0])
+                    print(ack)
                     print('Checking for ACK ' + str(seq))
                     if ack == str(seq):
                         ack_received = True
+                except timeout:
+                    print('send: TIMEOUT')
                         
             print('ACK FOUND, CHANGING SEQ')
             seq = 1 - seq
@@ -119,15 +120,15 @@ while True:
         # envia mensagem ao servidor
             client_socket.sendto(message.encode(), address)
             try:
-                print('send: GETTING ACK')
+                print('GETTING ACK...')
                 reply, addr = client_socket.recvfrom(1024)
-                ack = reply[0]
-            except timeout:
-                print('send: TIMEOUT')
-            else:
+                ack = chr(reply[0])
                 print('Checking for ACK ' + str(seq))
                 if ack == str(seq):
                     ack_received = True
+            except timeout:
+                print('send: TIMEOUT')
+            
         print('ACK FOUND, CHANGING SEQ')
         seq = 1 - seq
             # Aguarda um curto período de tempo para dar tempo ao servidor
@@ -156,15 +157,15 @@ while True:
                     while not ack_received:
                         client_socket.sendto(data, address)
                         try:
-                            print('send: GETTING ACK')
+                            print('GETTING ACK...')
                             reply, addr = client_socket.recvfrom(1024)
-                            ack = reply[0]
-                        except timeout:
-                            print('send: TIMEOUT')
-                        else:
+                            ack = chr(reply[0])
                             print('Checking for ACK ' + str(seq))
                             if ack == str(seq):
                                 ack_received = True
+                        except timeout:
+                            print('send: TIMEOUT')
+                        
                     print('ACK FOUND, CHANGING SEQ')
                     seq = 1 - seq
                     data = file.read(1024)

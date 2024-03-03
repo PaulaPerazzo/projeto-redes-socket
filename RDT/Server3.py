@@ -36,15 +36,16 @@ def receive():
             print(message2)
             checksum = message2[:2]
             seq = message2[2]
+            print(seq)
             pkt = message2[3:]
             if not message:
                 break
             if ip_checksum(pkt) == checksum and seq == str(expect_seq):
-                print('recv: Good Data Sending ACK' + str(seq))
+                print('Good Data Sending ACK' + str(seq))
                 print('recv pkt: ' + str(pkt))
                 messages.put((message, addr))
                 
-                server_socket.sendto(("ACK" + str(seq)).encode(), addr)
+                server_socket.sendto(seq.encode(), addr)
                 expect_seq = 1 - expect_seq
             else:
         # Check seq and send according ACK
