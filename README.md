@@ -7,6 +7,7 @@ O arquivo Client.py é responsável pela implementação do cliente no chat. Aqu
  - O cliente inicia uma conexão com o servidor usando um socket UDP.
  - Utiliza threads para lidar com a recepção contínua de mensagens do servidor.
  - Permite que o usuário envie mensagens em formato .txt para o servidor.
+ - Antes do envio, um pacote é montado fazendo uma verificação pelo RDT3.
  - O nome do cliente é registrado no servidor quando ele se conecta pela primeira vez.
  - O cliente se conecta a partir da mensagem: "hi, meu nome eh [nome]".
  - O cliente pode se desconectar do servidor enviando a mensagem "bye".
@@ -25,6 +26,7 @@ O arquivo Server.py é responsável pela implementação do servidor. Aqui estã
  - Utiliza threads para processar continuamente as mensagens recebidas e enviar respostas aos clientes.
  - Mantém uma lista de clientes conectados, associando cada cliente a um nome único.
  - Suporta o envio de arquivos no formato .txt entre os clientes.
+ - Verifica o checksum dos pacotes para saber se ele foi corrompido
  - Atualiza todos os clientes quando um novo cliente se junta ou quando um cliente se desconecta.
 
  ### Execução
