@@ -6,66 +6,102 @@ from datetime import datetime
 from Checksum import ip_checksum
 import time
 
-# cria uma fila para armazenar as mensagens recebidas
-messages = Queue()
-# lista para armazenar os endereços dos clientes conectados
-clients = []
+messages = Queue() # criação de fila para armazenar as mensagens
+clients = [] # lista para armazenar os endereços dos clientes conectados
 
-# configurações do servidor
+### configurações do servidor ###
 server_port = 9999
 host_name = gethostname()
 server_address = gethostbyname(host_name)
+server_socket = socket(AF_INET, SOCK_DGRAM) # criação de socket udp para o servidor
+server_socket.bind((server_address, server_port)) # atribuição de endereço e porta
 
-# cria um socket udp para o servidor e atribui um endereço e uma porta
-server_socket = socket(AF_INET, SOCK_DGRAM)
-server_socket.bind((server_address, server_port))
-
-# imprime uma mensagem indicando que o servidor está pronto
 print("Servidor conectado!")
 
-# função para receber mensagens dos clientes
-ack_recebido = threading.Event()
+ack_recebido = threading.Event() # função para receber mensagens dos clientes
 n_sequencia = None
 seq = 0
 
+### função three way handshake ###
+def ThreeWayHandshake(client_message = "", client_address = ""):
+    global seq
+
+    while True:
+        if client_message == "":
+            syn_msg, client_address = server_socket.recvfrom(1024) # recebe SYN do primeiro cliente
+            client_message = syn_msg.decode()
+
+        if client_message == "SYN":
+            print("SYN recebido do cliente, enviando SYN-ACK...")
+
+            syn_ack_msg = "SYN-ACK"
+            server_socket.sendto(syn_ack_msg.encode(), client_address) # envia SYN-ACK para o cliente
+
+            time.sleep(0.01)
+
+            ack_msg, _ = server_socket.recvfrom(1024) # verifica recebimento do ACK
+
+            if ack_msg.decode() == "ACK":
+                print("ACK recebido e conexão estabelecida pelo handshake") # ACK recebido e conexão ok
+
+                seq = 1 # definição do proximo numero de sequencia
+                break
+        else:
+            print("syn nao recebido")
+
+
+### função para o recebimento de mensagem dos clientes ###
 def receive():
     global n_sequencia
     while True:
         try:
-            # recebe uma mensagem e o endereço do remetente e coloca a mensagem com endereço na fila
-            message, addr = server_socket.recvfrom(1024)
-            decoded_message = message.decode()
+            message, addr = server_socket.recvfrom(1024) # recebe mensagem e endereço do cliente
+            decoded_message = message.decode() # mensagem decodificada
+            
+            if decoded_message == "SYN":
+                n_seq = 0
+                
+                # no caso de não ser o primeiro cliente verificar o 3 way novamente
+                ThreeWayHandshake(client_message=decoded_message, client_address=addr)
+                process_message(decoded_message, addr)  # processa a mensagem para realizar o handshake
+
             if decoded_message == "ACK 0" or decoded_message == "ACK 1":
-                n_sequencia = int(decoded_message[-1:])
+                n_sequencia = int(decoded_message[-1:]) # verificar qual foi o número do ACK recebido
                 ack_recebido.set()
+
             else:
-                checksum = decoded_message[:2]
-                n_seq = decoded_message[2]
-                pkt = decoded_message[3:]
-                if checksum == ip_checksum(pkt):
-                    print(f'Checksum válido, enviando ACK {n_seq}')
-                    messages.put((pkt, addr))
-                    server_socket.sendto(("ACK " + str(n_seq)).encode(), addr)
+                if decoded_message != "SYN":
+                    checksum = decoded_message[:2] # guardar valor de checksum
+                    n_seq = decoded_message[2] # guardar num de sequencia
+                    pkt = decoded_message[3:] # guardar o resto do pacote
+
+                    # fazer checagem entre checksum recebido e esperado
+                    if checksum == ip_checksum(pkt):
+                        print(f'Checksum válido, enviando ACK {n_seq}')
+                        messages.put((pkt, addr))
+                        server_socket.sendto(("ACK " + str(n_seq)).encode(), addr)
+
                 else:
                     server_socket.sendto(("ACK " + str(1 - int(n_seq))).encode(), addr)
-                    print("Erro: checksum inválido")
-
+                    if decoded_message != "SYN":
+                        print("Erro: checksum inválido")
+            
         except Exception as e:
             print(f"Erro ao receber mensagem: {e}")
 
 
-# função para processar a mensagem de um novo usuário e colocá-lo na lista de clients
+### função para processar a mensagem de um novo usuário ###
 def process_message(decoded_message, addr):
     # verifica se o endereço do cliente está entre os clientes conectados
     if addr not in [client[0] for client in clients]:
         # verifica se a mensagem é para adicioanr um novo cliente e se sim, retorna o nome
-        if decoded_message.startswith("hi, meu nome eh "):
+        if decoded_message.startswith("hi, meu nome eh ") and decoded_message != "SYN":
             name = decoded_message[len("hi, meu nome eh "):]
-            clients.append((addr, name))
+            clients.append((addr, name)) # adição de novo cliente à lista
             return name
     return None
 
-# função para manipular os arquivos e colocar a mensagem na formatação adequada
+### função para manipular os arquivos e colocar a mensagem na formatação adequada ###
 def handle_file(message, addr, name):
     # formata o cabeçalho e adiciona-o à lista de envio
     formatted_message = f"{addr[0]}:{addr[1]}/~{name}: "
@@ -84,7 +120,7 @@ def handle_file(message, addr, name):
     return lista_envios
 
 
-# função para transmitir mensagens para todos os clientes conectados
+### função de transmissão de mensagens ###
 def broadcast():
     global seq
     while True:
@@ -146,6 +182,7 @@ def broadcast():
                 envio_com_rdt(seq, "\\x00", client_addr, nome)
                 seq = 1 - seq
 
+### função de envio com rdt ###
 def envio_com_rdt(seq, mensagem, address, nome):
     global n_sequencia
 
@@ -173,6 +210,12 @@ def envio_com_rdt(seq, mensagem, address, nome):
         else:
             print('TIMEOUT Error, reenviando pacote...')
             pass
+
+
+### iniciar o three way handshake antes de outras funções ###
+handshake_thread = Thread(target=ThreeWayHandshake)
+handshake_thread.start()
+handshake_thread.join() # aguardar o handshake acabar antes de prosseguir
             
 # cria duas threads para as funções receive e broadcast e as inicia
 first_thread = Thread(target=receive)
