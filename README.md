@@ -1,4 +1,4 @@
-# Projeto de Redes - Socket UDP
+# Projeto de Redes - Socket UDP com rdt3
 Projeto de Redes de Computadores CIn - UFPE.
 
 ## Client.py
