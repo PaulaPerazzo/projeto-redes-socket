@@ -81,10 +81,10 @@ def receive():
                         messages.put((pkt, addr))
                         server_socket.sendto(("ACK " + str(n_seq)).encode(), addr)
 
-                else:
-                    server_socket.sendto(("ACK " + str(1 - int(n_seq))).encode(), addr)
-                    if decoded_message != "SYN":
-                        print("Erro: checksum inválido")
+                    else:
+                        server_socket.sendto(("ACK " + str(1 - int(n_seq))).encode(), addr)
+                        if decoded_message != "SYN":
+                            print("Erro: checksum inválido")
             
         except Exception as e:
             print(f"Erro ao receber mensagem: {e}")
