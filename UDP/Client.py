@@ -31,6 +31,7 @@ n_sequencia = None
 
 def receive():
     global n_sequencia
+    #ack_enviado = False
 
     # variável para armazenar a mensagem completa
     complete_message = ""
@@ -41,7 +42,10 @@ def receive():
             decoded_message = message.decode()
             if decoded_message == "ACK 0" or decoded_message == "ACK 1":
                 n_sequencia = int(decoded_message[-1:])
+                #time.sleep()
                 ack_recebido.set()
+               # ack_enviado = True
+
             else:
                 checksum = decoded_message[:2]   
                 n_seq = decoded_message[2]
@@ -49,16 +53,11 @@ def receive():
                 if checksum == ip_checksum(pkt):# adiciona a mensagem decodificada à mensagem completa
                     # verifica se a mensagem é um marcador de fim
                     if pkt != "\\x00":
-                        #if decoded_message == "ACK 0" or decoded_message == "ACK 1":
-                         #   n_sequencia = int(decoded_message[-1:])
-                          #  ack_recebido.set()
-                            # n_sequencia = int(decoded_message[-1:])
-                            #checksum = message.decode()[:2]
-                            # print(n_sequencia)
-                        #else:     
+                        #if 
                         complete_message += pkt
                         print(f'Checksum válido, enviando ACK {n_seq}')
                         client_socket.sendto(("ACK " + str(n_seq)).encode(), address)
+                       # ack_enviado = False
                     else:
                         # imprime a mensagem completa e reinicia a variável para a próxima mensagem
                         print(complete_message)
@@ -68,10 +67,13 @@ def receive():
                         complete_message = ""  # a mensagem fica vazia depois que printada
                         #print(f'Checksum válido, enviando ACK {n_seq}')
                         client_socket.sendto(("ACK " + str(n_seq)).encode(), address)
+                       # ack_enviado = False
 
                 else:
                     client_socket.sendto(("ACK " + str(1 - int(n_seq))).encode(), address)
                     print("Erro: checksum inválido")
+                    #ack_enviado = False
+
         except:
             pass
 
